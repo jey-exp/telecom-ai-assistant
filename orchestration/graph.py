@@ -28,24 +28,24 @@ def classify_query(state: TelecomState):
 
 def run_billing_agent(state: TelecomState):
     query = state.get("query")
-    # In a real app, we'd get customer_id from state or context
-    response = process_billing_query(query, customer_id="CUST001")
+    customer_id = state.get("customer_id", "CUST001")  # Use state customer_id
+    response = process_billing_query(query, customer_id=customer_id)
     state["intermediate_responses"] = {"result": response}
     return state
 
 def run_network_agent(state: TelecomState):
     query = state.get("query")
-    # Get customer email from state, fallback to CUST001's email
     customer_info = state.get("customer_info", {})
-    customer_email = customer_info.get("email", "john.doe@example.com")  # CUST001's email
+    user_email = state.get("user_email", "john.doe@example.com")  # Get from state
     
-    response = process_network_query(query, customer_email)
+    response = process_network_query(query, user_email)
     state["intermediate_responses"] = {"result": response}
     return state
 
 def run_plan_agent(state: TelecomState):
     query = state.get("query")
-    response = process_plan_query(query, customer_id="CUST001")
+    customer_id = state.get("customer_id", "CUST001")  # Use state customer_id
+    response = process_plan_query(query, customer_id=customer_id)
     state["intermediate_responses"] = {"result": response}
     return state
 

@@ -13,3 +13,6 @@ class TelecomState(TypedDict, total=False):
     final_response: str
     customer_info: Dict[str, Any]
     chat_history: List[Dict[str, str]]
+    user_email: str
+    user_role: str
+    customer_id: str

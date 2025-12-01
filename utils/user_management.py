@@ -81,12 +81,12 @@ class UserManager:
         user = self.db.query_one("SELECT * FROM users WHERE username = ?", (username,))
         return user
     
-    def authenticate_user(self, username, password):
-        """Authenticate user credentials"""
+    def authenticate_user(self, email, password):
+        """Authenticate user credentials by email"""
         password_hash = self.hash_password(password)
         user = self.db.query_one(
-            "SELECT * FROM users WHERE username = ? AND password_hash = ? AND is_active = 1",
-            (username, password_hash)
+            "SELECT * FROM users WHERE email = ? AND password_hash = ? AND is_active = 1",
+            (email, password_hash)
         )
         return user is not None
 

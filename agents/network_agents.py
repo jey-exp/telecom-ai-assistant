@@ -62,6 +62,65 @@ manager = autogen.GroupChatManager(groupchat=groupchat, llm_config={"config_list
 def process_network_query(query, customer_email="user@example.com"):
     """Run the AutoGen network troubleshooting flow with customer context."""
     
+    # Import here to avoid circular imports
+    from services.customer_service import get_user_role, get_customer_profile
+    
+    # Get user role first
+    user_role = get_user_role(customer_email)
+    
+    if user_role == 'admin':
+        # Admin gets network system overview
+        return handle_admin_network_query(query, customer_email)
+    elif user_role == 'customer':
+        # Customer gets personal troubleshooting
+        return handle_customer_network_query(query, customer_email)
+    else:
+        return "⚠️ Access denied: Invalid user credentials"
+
+def handle_admin_network_query(query, admin_email):
+    """Handle network queries for admin users"""
+    
+    # Get network system overview for admin
+    try:
+        # Get network incidents summary
+        incidents_query = """
+        SELECT COUNT(*) as total_incidents, 
+               COUNT(CASE WHEN status = 'open' THEN 1 END) as open_incidents
+        FROM network_incidents
+        """
+        incidents = db.query_one(incidents_query, [])
+        
+        # Get customer account status summary
+        status_query = """
+        SELECT account_status, COUNT(*) as count
+        FROM customers
+        GROUP BY account_status
+        """
+        status_summary = db.query(status_query, [])
+        
+        admin_context = f"""
+NETWORK SYSTEM OVERVIEW (Admin View):
+- Total Network Incidents: {incidents[0] if incidents else 0}
+- Open Incidents: {incidents[1] if incidents else 0}
+- Customer Status Summary: {status_summary}
+
+Admin Query: {query}
+"""
+        
+        # Use AutoGen for admin analysis
+        user_proxy.initiate_chat(
+            manager,
+            message=f"{admin_context}\n\nProvide network system analysis and recommendations for admin."
+        )
+        
+        return user_proxy.last_message()["content"] if user_proxy.chat_messages else "Admin network analysis completed."
+        
+    except Exception as e:
+        return f"⚠️ Admin network query error: {str(e)}"
+
+def handle_customer_network_query(query, customer_email):
+    """Handle network queries for customer users"""
+    
     # Get customer info from database
     try:
         customer_query = """
@@ -73,27 +132,11 @@ def process_network_query(query, customer_email="user@example.com"):
         """
         customer_data = db.query_one(customer_query, [customer_email])
         
-        if customer_data:
-            customer_context = f"""
+        if not customer_data:
+            return f"⚠️ Customer profile not found for email: {customer_email}"
+        
+        customer_context = f"""
 CUSTOMER INFORMATION (CHECK THIS FIRST!):
-- Customer Name: {customer_data[1]}
-- Account Status: {customer_data[2]} ← **CRITICAL: Check this first!**
-- Current Plan: {customer_data[4]}
-"""
-        else:
-            # Fallback to demo customer CUST001
-            customer_context = f"Email '{customer_email}' not found. Using demo account.\n"
-            customer_query_fallback = """
-            SELECT c.customer_id, c.name, c.account_status, c.service_plan_id,
-                   p.name as plan_name
-            FROM customers c
-            LEFT JOIN service_plans p ON c.service_plan_id = p.plan_id
-            WHERE c.customer_id = 'CUST001'
-            """
-            customer_data = db.query_one(customer_query_fallback, [])
-            if customer_data:
-                customer_context += f"""
-CUSTOMER INFORMATION (Demo Account):
 - Customer Name: {customer_data[1]}
 - Account Status: {customer_data[2]} ← **CRITICAL: Check this first!**
 - Current Plan: {customer_data[4]}
