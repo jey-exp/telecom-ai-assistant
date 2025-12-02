@@ -4,7 +4,7 @@ Tracks query, classification, responses, and customer context.
 """
 
 
-from typing import TypedDict, Dict, Any, List
+from typing import TypedDict, Dict, Any, List, Optional
 
 class TelecomState(TypedDict, total=False):
     query: str
@@ -16,3 +16,4 @@ class TelecomState(TypedDict, total=False):
     user_email: str
     user_role: str
     customer_id: str
+    customer_data: Optional[Any]

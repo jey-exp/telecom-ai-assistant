@@ -29,6 +29,7 @@ def render_chat_tab(tab_name, tab_obj):
                     "classification": None,
                     "intermediate_responses": {},
                     "final_response": None,
+                    "user_email": st.session_state.user_email,
                     "customer_info": {"email": st.session_state.user_email}
                 })
                 

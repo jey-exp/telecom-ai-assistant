@@ -11,6 +11,39 @@ from agents.billing_agents import process_billing_query
 from agents.network_agents import process_network_query
 from agents.service_agents import process_plan_query
 from agents.knowledge_agents import process_knowledge_query
+from openai import OpenAI
+import os
+
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def get_customer_context(state: TelecomState):
+    """Extract customer context from user info before routing to agents"""
+    try:
+        from services.customer_service import get_customer_profile, get_user_role
+        
+        # Get user email from customer_info or user_email
+        customer_info = state.get("customer_info", {})
+        user_email = customer_info.get("email") or state.get("user_email", "")
+        
+        if user_email:
+            # Get user role and customer data
+            user_role = get_user_role(user_email)
+            customer_id, customer_data = get_customer_profile(user_email)
+            
+            # Update state with customer context
+            state["user_email"] = user_email
+            state["user_role"] = user_role
+            state["customer_id"] = customer_id
+            state["customer_data"] = customer_data
+        
+        return state
+    except Exception as e:
+        # Fallback to defaults if there's an issue
+        state["customer_id"] = state.get("customer_id", None)
+        return state
+
 
 def classify_query(state: TelecomState):
     q = state.get("query", "").lower()
@@ -28,15 +61,23 @@ def classify_query(state: TelecomState):
 
 def run_billing_agent(state: TelecomState):
     query = state.get("query")
-    customer_id = state.get("customer_id", "CUST001")  # Use state customer_id
+    customer_id = state.get("customer_id")
+    
+    if not customer_id:
+        state["intermediate_responses"] = {"result": "Unable to access billing information. Please log in."}
+        return state
+    
     response = process_billing_query(query, customer_id=customer_id)
     state["intermediate_responses"] = {"result": response}
     return state
 
 def run_network_agent(state: TelecomState):
     query = state.get("query")
-    customer_info = state.get("customer_info", {})
-    user_email = state.get("user_email", "john.doe@example.com")  # Get from state
+    user_email = state.get("user_email")
+    
+    if not user_email:
+        state["intermediate_responses"] = {"result": "Unable to access network information. Please log in."}
+        return state
     
     response = process_network_query(query, user_email)
     state["intermediate_responses"] = {"result": response}
@@ -44,7 +85,12 @@ def run_network_agent(state: TelecomState):
 
 def run_plan_agent(state: TelecomState):
     query = state.get("query")
-    customer_id = state.get("customer_id", "CUST001")  # Use state customer_id
+    customer_id = state.get("customer_id")
+    
+    if not customer_id:
+        state["intermediate_responses"] = {"result": "Unable to access plan information. Please log in."}
+        return state
+    
     response = process_plan_query(query, customer_id=customer_id)
     state["intermediate_responses"] = {"result": response}
     return state
@@ -70,6 +116,7 @@ def finalize(state: TelecomState):
 def create_graph():
     sg = StateGraph(TelecomState)
 
+    sg.add_node("get_customer_context", get_customer_context)
     sg.add_node("classify_query", classify_query)
     sg.add_node("billing_node", run_billing_agent)
     sg.add_node("network_node", run_network_agent)
@@ -85,6 +132,9 @@ def create_graph():
             "knowledge": "knowledge_node",
         }.get(state["classification"], "knowledge_node")
 
+    # Add the customer context step first
+    sg.add_edge("get_customer_context", "classify_query")
+    
     sg.add_conditional_edges(
         "classify_query",
         router,
@@ -101,6 +151,6 @@ def create_graph():
     sg.add_edge("plan_node", "finalize")
     sg.add_edge("knowledge_node", "finalize")
 
-    sg.set_entry_point("classify_query")
+    sg.set_entry_point("get_customer_context")
 
     return sg.compile()

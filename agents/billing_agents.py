@@ -64,12 +64,12 @@ def get_customer_billing_details(customer_id):
     row = db.query_one(sql, [customer_id])
     return row
 
-def process_billing_query(query, customer_id="CUST001"):
+def process_billing_query(query, customer_id):
     """Process billing query using CrewAI agents with context-awareness
     
     Args:
         query: User's billing question
-        customer_id: Customer identifier (default: CUST001 for demo)
+        customer_id: Customer identifier
         
     Returns:
         AI-generated response tailored to query complexity
