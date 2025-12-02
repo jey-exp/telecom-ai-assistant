@@ -8,6 +8,7 @@ from typing import TypedDict, Dict, Any, List, Optional
 
 class TelecomState(TypedDict, total=False):
     query: str
+    service_type: str  # Explicit service type from UI tabs
     classification: str
     intermediate_responses: Dict[str, Any]
     final_response: str

@@ -46,16 +46,49 @@ def get_customer_context(state: TelecomState):
 
 
 def classify_query(state: TelecomState):
-    q = state.get("query", "").lower()
-
-    if any(w in q for w in ["bill", "charge", "payment"]):
-        state["classification"] = "billing"
-    elif any(w in q for w in ["network", "signal", "data", "call", "internet", "slow"]):
-        state["classification"] = "network"
-    elif any(w in q for w in ["plan", "recommend", "upgrade", "downgrade"]):
-        state["classification"] = "plan"
+    # Check if service_type is explicitly provided (from UI tabs)
+    service_type = state.get("service_type")
+    
+    if service_type:
+        # Use explicit service type from UI tab
+        # Map "plans" to "plan" for consistency
+        if service_type.lower() == "plans":
+            state["classification"] = "plan"
+        else:
+            state["classification"] = service_type.lower()
     else:
-        state["classification"] = "knowledge"
+        # OpenAI-based classification
+        q = state.get("query", "")
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that classifies telecom user queries. Classify the following query into exactly one of these categories: 'billing', 'network', 'plan', or 'knowledge'. Return ONLY the category name in lowercase."},
+                    {"role": "user", "content": q}
+                ],
+                temperature=0
+            )
+            classification = response.choices[0].message.content.strip().lower()
+            
+            # Validate classification
+            if classification in ["billing", "network", "plan", "knowledge"]:
+                state["classification"] = classification
+            else:
+                # Fallback if model returns something unexpected
+                state["classification"] = "knowledge"
+                
+        except Exception as e:
+            print(f"Classification error: {e}")
+            # Fallback to keyword-based classification for general queries
+            q = q.lower()
+            if any(w in q for w in ["bill", "charge", "payment"]):
+                state["classification"] = "billing"
+            elif any(w in q for w in ["network", "signal", "data", "call", "internet", "slow"]):
+                state["classification"] = "network"
+            elif any(w in q for w in ["plan", "recommend", "upgrade", "downgrade"]):
+                state["classification"] = "plan"
+            else:
+                state["classification"] = "knowledge"
 
     return state
 

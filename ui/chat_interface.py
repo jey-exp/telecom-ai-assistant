@@ -22,9 +22,10 @@ def render_chat_tab(tab_name, tab_obj):
             st.session_state.messages[tab_name].append({"role": "user", "content": prompt})
             
             try:
-                # Invoke LangGraph with customer context
+                # Invoke LangGraph with customer context and explicit service type
                 result = st.session_state.graph.invoke({
                     "query": prompt,
+                    "service_type": tab_name.lower(),  # Pass the tab name as service type
                     "chat_history": [],
                     "classification": None,
                     "intermediate_responses": {},
