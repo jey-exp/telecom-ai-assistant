@@ -18,14 +18,18 @@ def render_chat_tab(tab_name, tab_obj):
                 st.markdown(msg["content"].replace("$", "\\$"))
         
         # Chat input at bottom
-        if prompt := st.chat_input(f"Ask about {tab_name.lower()}...", key=f"chat_{tab_name}"):
+        placeholder = "Ask anything..." if tab_name == "Assistant" else f"Ask about {tab_name.lower()}..."
+        if prompt := st.chat_input(placeholder, key=f"chat_{tab_name}"):
             st.session_state.messages[tab_name].append({"role": "user", "content": prompt})
             
             try:
+                # Determine service type (None for Assistant to trigger classification)
+                service_type = None if tab_name == "Assistant" else tab_name.lower()
+                
                 # Invoke LangGraph with customer context and explicit service type
                 result = st.session_state.graph.invoke({
                     "query": prompt,
-                    "service_type": tab_name.lower(),  # Pass the tab name as service type
+                    "service_type": service_type,
                     "chat_history": [],
                     "classification": None,
                     "intermediate_responses": {},

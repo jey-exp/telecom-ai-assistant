@@ -67,19 +67,16 @@ else:
             st.stop()
     
     # Create tabs
-    tab0, tab1, tab2, tab3, tab4 = st.tabs([
-        "My Account", "Billing", "Network", "Plans", "Knowledge"
+    tab0, tab1 = st.tabs([
+        "Dashboard", "Chat Assistant"
     ])
     
-    # My Account Tab
+    # Dashboard Tab
     with tab0:
         render_dashboard()
     
-    # Service Tabs
-    render_chat_tab("Billing", tab1)
-    render_chat_tab("Network", tab2)
-    render_chat_tab("Plans", tab3)
-    render_chat_tab("Knowledge", tab4)
+    # Unified Chat Tab
+    render_chat_tab("Assistant", tab1)
 
 print("= " * 80)
 print("APP RENDER COMPLETE")
